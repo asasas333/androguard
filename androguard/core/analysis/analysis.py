@@ -761,30 +761,19 @@ class Analysis(object):
         debug("Creating XREF/DREF")
         started_at = time.time()
 
-        instances_class_name = list(self.classes.keys())
-
         queue_classes = queue.Queue()
+        
         last_vm = self.vms[-1]
         for current_class in last_vm.get_classes():
             queue_classes.put(current_class)
-
-        threads = []
-        # TODO maybe adjust this number by the 
-        # number of cores or make it configureable?
-        for n in range(2):
-            thread = threading.Thread(target=self._create_xref, args=(instances_class_name, last_vm, queue_classes))
-            thread.daemon = True
-            thread.start()
-            threads.append(thread)
-
-        debug("Waiting all threads")
+        
+        self._create_xref(last_vm, queue_classes)
+        
         queue_classes.join()
-
-        debug("")
         diff = time.time() - started_at
         debug("End of creating XREF/DREF {:.0f}:{:.2f}".format(*divmod(diff, 60)))
 
-    def _create_xref(self, instances_class_name, last_vm, queue_classes):
+    def _create_xref(self, last_vm, queue_classes):
         while not queue_classes.empty():
             current_class = queue_classes.get()
             debug("Creating XREF/DREF for %s" % current_class.get_name())
@@ -805,7 +794,7 @@ class Analysis(object):
                             type_info = last_vm.get_cm_type(idx_type)
 
                             # Internal xref related to class manipulation
-                            if type_info in instances_class_name and type_info != current_class.get_name(
+                            if type_info in self.classes and type_info != current_class.get_name(
                             ):
                                 # new instance
                                 if op_value == 0x22:
@@ -860,7 +849,7 @@ class Analysis(object):
                                         off)
 
                                     # Internal xref related to class manipulation
-                                    if class_info in instances_class_name and class_info != current_class.get_name(
+                                    if class_info in self.classes and class_info != current_class.get_name(
                                     ):
                                         self.classes[current_class.get_name(
                                         )].AddXrefTo(REF_CLASS_USAGE,
